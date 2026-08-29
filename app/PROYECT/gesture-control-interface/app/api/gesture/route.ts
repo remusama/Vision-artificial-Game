@@ -23,14 +23,18 @@ function getConvexClient() {
     }
   }
 
-  return url ? new ConvexHttpClient(url) : null;
+  if (!url) {
+    url = "http://127.0.0.1:3210";
+  }
+
+  return new ConvexHttpClient(url);
 }
 
 // POST: Registrar un log de ademán detectado desde el sistema local de Python
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { gesture, action, secret } = body;
+    const { gesture, action, device, secret } = body;
 
     // Validación de seguridad mediante clave secreta compartida
     const expectedSecret = process.env.API_SECRET_KEY || "ademangesturesecret123";
@@ -44,11 +48,18 @@ export async function POST(req: NextRequest) {
 
     const client = getConvexClient();
     if (!client) {
-      return NextResponse.json({ error: "Servicio Convex no configurado (NEXT_PUBLIC_CONVEX_URL vacía)" }, { status: 500 });
+      // Si Convex no está activo o configurado, retornamos éxito local para que el backend de Python
+      // continúe funcionando sin interrupciones ni bloqueos de red (funcionamiento offline)
+      return NextResponse.json({ success: true, info: "Convex no disponible (Modo Local Offline)" });
     }
 
-    // Guardar el log en la base de datos de Convex
-    await client.mutation(api.gestureLogs.addLog, { gesture, action });
+    // Guardar el log en la base de datos de Convex de forma segura
+    try {
+      await client.mutation(api.gestureLogs.addLog, { gesture, action, device });
+    } catch (dbError: any) {
+      console.warn("Fallo al escribir en Convex en tiempo real:", dbError.message);
+    }
+    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

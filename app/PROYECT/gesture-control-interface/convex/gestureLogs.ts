@@ -1,16 +1,18 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Registrar una nueva acción de ademán detectada
+// Registrar una nueva acción de ademán detectada, registrando opcionalmente el host de la PC
 export const addLog = mutation({
   args: {
     gesture: v.string(),
     action: v.string(),
+    device: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("gestureLogs", {
       gesture: args.gesture,
       action: args.action,
+      device: args.device,
       timestamp: Date.now(),
     });
   },

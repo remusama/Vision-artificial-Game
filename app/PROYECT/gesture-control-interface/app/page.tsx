@@ -48,6 +48,9 @@ export default function Page() {
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false)
   const [hudToast, setHudToast] = useState<GestureToast | null>(null)
 
+  // Local logs state for offline vercel/standalone mode
+  const [localLogs, setLocalLogs] = useState<{ id: string; gesture: string; action: string; timestamp: number }[]>([])
+
   // Game ref to simulate slashes
   const gameRef = useRef<FruitNinjaGameRef>(null)
 
@@ -62,29 +65,45 @@ export default function Page() {
     }
   }, [settings])
 
+  const addLocalLog = useCallback((gestureName: string, actionLabel: string) => {
+    setLocalLogs((prev) => [
+      {
+        id: crypto.randomUUID(),
+        gesture: gestureName,
+        action: actionLabel,
+        timestamp: Date.now(),
+      },
+      ...prev.slice(0, 9)
+    ])
+  }, [])
+
   const handleTestHUD = useCallback(() => {
     const gestureObj = GESTURES.find((g) => g.id === 'pinch')
     if (gestureObj) {
+      const actionLabel = 'Reproducir / Pausar'
+      addLocalLog('Pinza detectada', actionLabel)
       setHudToast({
         id: crypto.randomUUID(),
         icon: gestureObj.icon,
         gesture: 'Pinza detectada',
-        action: 'Reproducir / Pausar',
+        action: actionLabel,
         cooldown: 1500,
       })
     }
-  }, [])
+  }, [addLocalLog])
 
   const handleSimulateGesture = useCallback((gestureId: GestureId) => {
     const gestureObj = GESTURES.find((g) => g.id === gestureId)
     const actionId = mappings[gestureId]
     const actionObj = OS_ACTIONS.find((a) => a.id === actionId)
     if (gestureObj) {
+      const actionLabel = actionObj?.label || 'Sin Asignar'
+      addLocalLog(gestureObj.name, actionLabel)
       setHudToast({
         id: crypto.randomUUID(),
         icon: gestureObj.icon,
         gesture: gestureObj.name,
-        action: actionObj?.label || 'Sin Asignar',
+        action: actionLabel,
         cooldown: 2000,
       })
     }
@@ -99,7 +118,7 @@ export default function Page() {
         gameRef.current?.triggerSwipeSlice('random')
       }
     }
-  }, [mappings, activeTab])
+  }, [mappings, activeTab, addLocalLog])
 
   const handleCooldownComplete = useCallback((id: string) => {
     setHudToast((current) => (current?.id === id ? null : current))
@@ -108,7 +127,12 @@ export default function Page() {
   const handleMappingChange = useCallback((gesture: GestureId, action: OsActionId) => {
     setMappings((prev) => {
       const next = { ...prev, [gesture]: action }
-      updateSettings({ mappings: next })
+      // Intentar actualizar en Convex de forma silenciosa
+      try {
+        updateSettings({ mappings: next })
+      } catch (err) {
+        console.warn("No se pudo guardar la configuración en Convex (Modo Offline).", err)
+      }
       return next
     })
     
@@ -116,15 +140,17 @@ export default function Page() {
     const gestureObj = GESTURES.find((g) => g.id === gesture)
     const actionObj = OS_ACTIONS.find((a) => a.id === action)
     if (gestureObj) {
+      const actionLabel = actionObj?.label || 'Sin Asignar'
+      addLocalLog(gestureObj.name, actionLabel)
       setHudToast({
         id: crypto.randomUUID(),
         icon: gestureObj.icon,
         gesture: gestureObj.name,
-        action: actionObj?.label || 'Sin Asignar',
+        action: actionLabel,
         cooldown: 2000,
       })
     }
-  }, [updateSettings])
+  }, [updateSettings, addLocalLog])
 
   const handleCameraToggle = useCallback((value: boolean) => {
     setCameraEnabled(value)
@@ -252,7 +278,7 @@ export default function Page() {
                 onProfileChange={handleProfileChange}
                 onOpenCalibration={() => setIsCalibrationOpen(true)}
               />
-              <GestureHistory />
+              <GestureHistory localLogs={localLogs} />
             </div>
 
             {/* Column 2 — Gesture mapping */}
