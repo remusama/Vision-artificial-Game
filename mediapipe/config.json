@@ -1,0 +1,16 @@
+{
+    "camera_source": "0",
+    "zone_x": [
+        0.2,
+        0.8
+    ],
+    "zone_y": [
+        0.2,
+        0.8
+    ],
+    "instructions": "Para webcam integrada usa '0'. Para ESP32-CAM pon su IP (ej: '192.168.1.50') o URL completa (ej: 'http://192.168.1.50:81/stream')",
+    "game_mode": "osugame",
+    "target_hand": "DERECHA",
+    "sens_val": 3,
+    "suav_val": 10
+}
