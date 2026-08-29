@@ -338,6 +338,8 @@ def log_gesture_event(gesture, action):
 
 def api_logger_worker():
     """Hilo trabajador que lee de la cola y envía peticiones POST seguras a la API de Next.js."""
+    import socket
+    pc_name = socket.gethostname()
     while True:
         try:
             gesture, action = api_log_queue.get()
@@ -347,6 +349,7 @@ def api_logger_worker():
             payload = {
                 "gesture": gesture,
                 "action": action,
+                "device": pc_name,
                 "secret": api_secret_key
             }
             data = json.dumps(payload).encode('utf-8')
